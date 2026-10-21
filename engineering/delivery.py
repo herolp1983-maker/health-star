@@ -347,12 +347,12 @@ def repair_limit(ledger):
     if exception is None:
         return 2
     if not isinstance(exception, dict) or exception.get('delivery_id') != ledger.get('id') or \
-            exception.get('max_rounds') != 3 or \
+            type(exception.get('max_rounds')) is not int or exception['max_rounds'] < 3 or \
             exception.get('approved_by') != 'user' or exception.get('scope') != 'this delivery only' or \
             not isinstance(exception.get('approval'), str) or not exception['approval'].strip() or \
             type(exception.get('approved_utc')) not in (int, float) or exception['approved_utc'] <= 0:
         raise RuntimeError('Malformed user-authorized repair exception')
-    return 3
+    return exception['max_rounds']
 
 
 def reserve_fix(ledger, reason):

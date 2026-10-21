@@ -165,6 +165,20 @@ test('设置关闭后重新读取密钥状态与目标；旧配置的延迟响�
 
 const {renamePendingReport,deleteReport,reportDeletionImpact,analyzeOneReport,importAndAnalyzeReport,recordAnalysisFailure}=await import(pathToFileURL(target+'/report-workflow.mjs'));
 const uploadConfig={endpoint:'https://example.com/v1',model:'fixture-model',hasKey:true};
+test('删除暂停批次引用的报告时原子清除计划，其他报告和已保存结果保留',async()=>{
+ const s=fixture();s.reports.push({...structuredClone(s.reports[0]),id:'other'});
+ s.batchProgress={id:'fixture-batch',plan:{jobs:[{cardId:'basic',parts:[{reportId:'synthetic-report',startPage:1,endPage:1,pageCount:1}]}],problems:[],reportIds:['synthetic-report'],cardIds:['basic']},nextIndex:0,sourceDigest:'a'.repeat(64)};
+ validateState(s);const unrelated=deleteReport(s,'other');assert.deepEqual(unrelated.batchProgress,s.batchProgress);validateState(unrelated);
+ const out=deleteReport(s,'synthetic-report');assert.equal(out.batchProgress,undefined);assert.equal(out.reports[0].id,'other');assert.ok(s.batchProgress);validateState(out);
+ const restored=await decryptBackup(await encryptBackup(out,'fixture-pass'),'fixture-pass');assert.equal(restored.reports[0].id,'other');assert.equal(restored.batchProgress,undefined);
+});
+test('重新打开档案持久保存中断状态，不自动发送AI或丢失批次进度',async()=>{
+ const s=fixture();s.reports[0].status='分析中';
+ s.batchProgress={id:'fixture-batch',plan:{jobs:[{cardId:'basic',parts:[{reportId:'synthetic-report',startPage:1,endPage:1,pageCount:1}]}],problems:[],reportIds:['synthetic-report'],cardIds:['basic']},nextIndex:0,sourceDigest:'a'.repeat(64)};
+ const actions=[];let saved;
+ window.HeroNative={postMessage:message=>{const request=JSON.parse(message);actions.push(request.action);if(request.action==='saveState')saved=request.payload;queueMicrotask(()=>window.heroNativeResult(request.id,request.action==='readState'?s:saved,null));}};
+ try{const recovered=await readState();assert.equal(recovered.reports[0].status,'失败');assert.match(recovered.reports[0].analysisError,/中断/);assert.deepEqual(recovered.batchProgress,s.batchProgress);assert.deepEqual(actions,['readState','saveState']);assert.equal(saved.reports[0].status,'失败');validateState(recovered);assert.equal(s.reports[0].status,'分析中');}finally{delete window.HeroNative;}
+});
 test('上传只自动分析当前一份，长PDF分段完成后命名但不写指标，保留历史报告',async()=>{
  let s=longDateFixture();s.reports[0].date='';s.reports[0].dateSource='待确认';s.reports.push({...structuredClone(s.reports[0]),id:'unrelated',name:'原有报告'});const calls=[];
  await analyzeOneReport(s,'synthetic-report',uploadConfig,async fn=>{s=fn(s);validateState(s);},()=>{},async(action,payload)=>{

@@ -25,7 +25,7 @@ Evidence is local JSON under .engineering and must be populated from real authen
 
 Remote JSON fields:
 
-`repository`, `pr_number`, `state` (OPEN), `draft` (false), `base_branch`, `head_sha`, `head_tree_sha`, `head_tree_verified` (true), `base_sha`, `current_base_sha`, `up_to_date` (true), `candidate_digest`, `fetched_at`, `checks`, `unresolved_blocking_findings` (0), `fix_rounds` (normally 0..2; 3 only for an explicitly user-authorized exception bound to the delivery ledger). For a distinct reconstructed root baseline, also record `base_tree_sha`, `base_tree_verified` (true) and `base_parent_count` (0), derived from authenticated GitHub commit/file evidence.
+`repository`, `pr_number`, `state` (OPEN), `draft` (false), `base_branch`, `head_sha`, `head_tree_sha`, `head_tree_verified` (true), `base_sha`, `current_base_sha`, `up_to_date` (true), `candidate_digest`, `fetched_at`, `checks`, `unresolved_blocking_findings` (0), `fix_rounds` (normally 0..2; a higher finite maximum only for an explicitly user-authorized exception bound to the delivery ledger). For a distinct reconstructed root baseline, also record `base_tree_sha`, `base_tree_verified` (true) and `base_parent_count` (0), derived from authenticated GitHub commit/file evidence.
 
 Each check has `name`, `head_sha`, `status` (COMPLETED), `conclusion` (SUCCESS), `app_slug` (github-actions), `workflow_path` (.github/workflows/engineering.yml). Obtain the workflow path/provenance from actual run/check metadata; do not fill it merely because the job name matches. Preserve raw response references locally for audit. Fresh remote metadata is at most 60 seconds old at authorization.
 
@@ -37,12 +37,12 @@ pre-delivery.json is bound to candidate base/digest with `complete: true`, `stat
 
 ## Unattended continuation after eight minutes
 
-If a real PR is still waiting after the foreground wait budget, use the Codex app heartbeat automation tool to create/update a follow-up in THIS chat every ten minutes. Search the task's existing automations first; do not create duplicates. Store PR/repository, delivery ledger ID, expected head, candidate paths, used fix batches and a 24-hour absolute expiry. The heartbeat must:
+If a real PR is still waiting after the foreground wait budget, use the Codex app heartbeat automation tool to create/update a follow-up in THIS chat at the configured follow_up_minutes interval (currently thirty minutes). Search the task's existing automations first; do not create duplicates. Store PR/repository, delivery ledger ID, expected head, candidate paths, used fix batches and a 24-hour absolute expiry. The heartbeat must:
 
 1. Stay quiet on unchanged/non-actionable state. Notify only on merge, blocking failure, expiry or needed account action.
 2. Fetch fresh head/check/rule data. Resume the same shared two-batch repair ledger; chat restarts or CI retries do not reset it.
 3. If the head changed, invalidate old local evidence; rerun independent reviews/checks before any automatic merge. Never assume an external push was reviewed.
-4. Generate the merge plan, perform the exact-head Squash API merge if ELIGIBLE, verify actual merged state, then pause/delete this monitor. Closed PRs also terminate monitoring. Failure after two repair batches, unavailable gates, failed auth or 24-hour expiry reports BLOCKED and stops. Do not silently run indefinitely.
+4. Generate the merge plan, perform the exact-head Squash API merge if ELIGIBLE, verify actual merged state, then pause/delete this monitor. Closed PRs also terminate monitoring. Failure after the persisted authorized repair limit, unavailable gates, failed auth or 24-hour expiry reports BLOCKED and stops. Do not silently run indefinitely.
 
 The user has authorized this follow-up as part of their fully automatic delivery request. If scheduling is unavailable, report the concrete limitation; do not claim that a background job exists. Never create an empty monitor before an actual PR exists. Account/payment changes remain the user's responsibility and are not a hand-merge requirement.
 

@@ -25,6 +25,11 @@ class GateTests(unittest.TestCase):
         self.assertEqual(d.reserve_fix(ledger, 'CI repair')['fix_rounds'], 3)
         with self.assertRaises(RuntimeError):
             d.reserve_fix(ledger, 'another repair')
+        ledger['repair_exception']['max_rounds'] = 4
+        ledger['repair_exception']['approval'] = 'Explicit additional authorization to finish this delivery'
+        self.assertEqual(d.reserve_fix(ledger, 'consolidated completion')['fix_rounds'], 4)
+        with self.assertRaises(RuntimeError):
+            d.reserve_fix(ledger, 'fifth without new authorization')
         ledger['repair_exception']['delivery_id'] = 'different-delivery'
         with self.assertRaises(RuntimeError):
             d.repair_limit(ledger)

@@ -1,4 +1,4 @@
-# 健康星 Android 0.3.0
+# 健康星 Android 0.5.1
 
 用户已将应用从Hero健康更名为健康星。包名cn.herohealth.app、设备密钥别名hero-health-local-v1、私有档案路径、备份标识hero-health-backup及发布证书保持原样，以支持覆盖升级。
 
@@ -23,7 +23,7 @@ Java宿主+捆绑React/TypeScript，受限WebView只加载本地资源；原生H
 
 运行npm test，然后pwsh -NoProfile -File scripts/build-android.ps1。JDK17/SDK35/Build Tools35.0.0/Gradle8.11.1/AGP8.9.2。Windows中文路径通过带所有权标记的英文临时目录构建；签名文件本地保存且Git忽略，不能重建。
 
-产物delivery/健康星-0.3.0.apk，versionCode=4。依赖org.json:json:20240303只用于JVM协议测试，不打包到Android运行时。验证记录见verification/BUILD-REPORT.md。
+产物delivery/健康星-0.5.1.apk，versionCode=8。发布构建必须使用原有签名配置和密钥，缺失时立即停止；不会自动生成替代密钥。日常 PR 使用仓库根目录的 engineering/check-local.ps1 验证 Debug 构建。依赖org.json:json:20240303只用于JVM协议测试，不打包到Android运行时。验证记录见verification/BUILD-REPORT.md。
 
 未获取手机真实API Key或发送真实健康资料。接口回归依据官方文档和受控响应，不能等同于真实MiniMax账户联调或Vivo桌面效果已经通过。
 

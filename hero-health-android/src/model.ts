@@ -19,6 +19,11 @@ export const initialState = ():HealthState => ({schema:1,revision:0,metrics:[{id
 export const readingsFor = (state: HealthState,id:string) => state.readings.filter(r=>r.metricId===id).sort((a,b)=>a.date.localeCompare(b.date));
 export const latest = (state:HealthState,id:string) => readingsFor(state,id).at(-1);
 export const BASIC_CARD_ID='basic';
+/** Called only while opening an archive; it never resends an interrupted request. */
+export function recoverInterruptedAnalyses(state:HealthState):HealthState {
+  if(!state.reports.some(r=>r.status==='分析中'))return state;
+  return {...state,reports:state.reports.map(r=>r.status==='分析中'?{...r,status:r.analyses?.at(-1)?.batchComplete!==false&&r.analyses?.at(-1)&&!r.analyses.at(-1)!.accepted?'待确认':'失败',analysisError:'上次分析已中断，已保存的结果保留；请确认后手动重试。'}:r)};
+}
 export function basicCard():HealthCard {return {id:BASIC_CARD_ID,name:'基本信息',description:'身高、体重与血压，记录身体的基础变化。',metricIds:['height','weight','pressure'],archived:false};}
 /** Upgrade old local archives and enforce the fixed card without changing historical readings. */
 export function normalizeState(state:HealthState):HealthState {

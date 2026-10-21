@@ -2,6 +2,9 @@
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 $projectRoot=Split-Path $PSScriptRoot -Parent
+if(!(Test-Path -LiteralPath (Join-Path $projectRoot 'signing.properties') -PathType Leaf)){
+    throw 'Original signing.properties is required. Restore the provisioned release signing identity; this build never generates a replacement key.'
+}
 Set-Location -LiteralPath $projectRoot
 $toolsRoot=Join-Path $projectRoot '.tools'
 $jdkFolder=Get-ChildItem -LiteralPath $toolsRoot -Directory -Filter 'jdk-*' | Select-Object -First 1
@@ -20,20 +23,6 @@ if($SetupSdk){
 if(!(Test-Path -LiteralPath "$env:ANDROID_HOME/platforms/android-35/android.jar")){throw 'Android SDK 35 missing; rerun with -SetupSdk'}
 $sdkProperty=$env:ANDROID_HOME.Replace('\','/')
 [IO.File]::WriteAllText((Join-Path $projectRoot 'local.properties'),"sdk.dir=$sdkProperty`n",(New-Object Text.UTF8Encoding($false)))
-if(!(Test-Path -LiteralPath 'signing.properties')){
-    $keyFolder=Join-Path $projectRoot '.keys'
-    New-Item -ItemType Directory -Path $keyFolder -Force | Out-Null
-    $keyPath=Join-Path $keyFolder 'hero-health-release.jks'
-    if(Test-Path -LiteralPath $keyPath){throw 'Signing key exists without properties; preserve it and restore its original signing.properties'}
-    $randomBytes=New-Object byte[] 32
-    $rng=[Security.Cryptography.RandomNumberGenerator]::Create();$rng.GetBytes($randomBytes);$rng.Dispose()
-    $env:HERO_SIGNING_PASSWORD=[Convert]::ToBase64String($randomBytes)
-    & "$env:JAVA_HOME/bin/keytool.exe" -genkeypair -keystore $keyPath -alias hero-health -keyalg RSA -keysize 3072 -validity 10000 -storepass:env HERO_SIGNING_PASSWORD -keypass:env HERO_SIGNING_PASSWORD -dname 'CN=Hero Health Local Release, O=Hero Health, C=CN'
-    if($LASTEXITCODE -ne 0){throw 'Signing key creation failed'}
-    $signingText="storeFile=.keys/hero-health-release.jks`nstorePassword=$env:HERO_SIGNING_PASSWORD`nkeyAlias=hero-health`nkeyPassword=$env:HERO_SIGNING_PASSWORD`n"
-    [IO.File]::WriteAllText((Join-Path $projectRoot 'signing.properties'),$signingText,(New-Object Text.UTF8Encoding($false)))
-    Remove-Item Env:HERO_SIGNING_PASSWORD
-}
 if(!$SkipWeb){& npm.cmd run build:web;if($LASTEXITCODE -ne 0){throw 'Web build failed'}}
 $compileRoot=$projectRoot
 $compileTools=$toolsRoot

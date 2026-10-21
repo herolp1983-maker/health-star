@@ -19,7 +19,8 @@ export function reportDeletionImpact(s:HealthState,id:string){
 export function deleteReport(s:HealthState,id:string):HealthState{
  if(!s.reports.some(r=>r.id===id))return s;
  const impact=reportDeletionImpact(s,id);
- return {...s,revision:s.revision+1,reports:s.reports.filter(r=>r.id!==id),readings:s.readings.filter(r=>r.reportId!==id),...(s.aiSummaries?{aiSummaries:s.aiSummaries.filter(a=>!impact.summaryIds.has(a.id))}:{})};
+ const affectedBatch=s.batchProgress?.plan.jobs.some(job=>job.parts.some(part=>part.reportId===id));
+ return {...s,...(affectedBatch?{batchProgress:undefined}:{}),revision:s.revision+1,reports:s.reports.filter(r=>r.id!==id),readings:s.readings.filter(r=>r.reportId!==id),...(s.aiSummaries?{aiSummaries:s.aiSummaries.filter(a=>!impact.summaryIds.has(a.id))}:{})};
 }
 export function analysisFailureMessage(stage:string,error:unknown){return `${stage}未完成：${error instanceof Error?error.message:'操作失败，请重试'}`.slice(0,600);}
 export function recordAnalysisFailure(s:HealthState,reportIds:string[],stage:string,error:unknown):HealthState{

@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 
 /** HTTPS only; credentials never follow a redirect or appear in error messages. */
 final class AiHttp {
+    private static final java.util.concurrent.ScheduledExecutorService DEADLINES=java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,"ai-deadline");t.setDaemon(true);return t;});
     static final class Failure extends Exception { Failure(String message){super(message);} }
     static String completionUrl(String base) throws Failure {
         try {
@@ -30,11 +31,21 @@ final class AiHttp {
         return "AI 服务暂时不可用（HTTP "+status+"），请稍后重试";
     }
     static String post(String base,String key,String body) throws Exception {
+        return post(base,key,body,new AiCancellation());
+    }
+    static String post(String base,String key,String body,AiCancellation cancellation) throws Exception {
+        cancellation.check();
         HttpsURLConnection connection=(HttpsURLConnection)new URL(completionUrl(base)).openConnection();
-        return exchange(connection,key,body);
+        return exchange(connection,key,body,cancellation);
     }
     static String exchange(HttpsURLConnection connection,String key,String body) throws Exception {
+        return exchange(connection,key,body,new AiCancellation());
+    }
+    static String exchange(HttpsURLConnection connection,String key,String body,AiCancellation cancellation) throws Exception {
+        java.util.concurrent.ScheduledFuture<?> deadline=null;
         try {
+            cancellation.attach(connection);
+            deadline=DEADLINES.schedule(cancellation::cancel,120,java.util.concurrent.TimeUnit.SECONDS);
             connection.setInstanceFollowRedirects(false);connection.setConnectTimeout(20000);connection.setReadTimeout(90000);
             connection.setRequestMethod("POST");connection.setDoOutput(true);connection.setUseCaches(false);
             connection.setRequestProperty("Content-Type","application/json; charset=utf-8");connection.setRequestProperty("Accept","application/json");
@@ -42,17 +53,20 @@ final class AiHttp {
             byte[] bytes=body.getBytes(StandardCharsets.UTF_8);
             if(bytes.length>18*1024*1024)throw new Failure("分析请求超过18 MB，请拆分报告后重试");
             connection.setFixedLengthStreamingMode(bytes.length);
+            cancellation.check();
             try(OutputStream output=connection.getOutputStream()){output.write(bytes);}
+            cancellation.check();
             int status=connection.getResponseCode();
             if(status<200||status>=300)throw new Failure(errorForStatus(status));
             try(InputStream input=connection.getInputStream();ByteArrayOutputStream output=new ByteArrayOutputStream()){
                 byte[] buffer=new byte[8192];int count;
-                while((count=input.read(buffer))!=-1){if(output.size()+count>512*1024)throw new Failure("AI 返回内容过大，请减少资料后重试");output.write(buffer,0,count);}
+                while((count=input.read(buffer))!=-1){cancellation.check();if(output.size()+count>512*1024)throw new Failure("AI 返回内容过大，请减少资料后重试");output.write(buffer,0,count);}
+                cancellation.check();
                 return output.toString(StandardCharsets.UTF_8.name());
             }
         }catch(java.net.SocketTimeoutException error){throw new Failure("AI 请求超时，请检查网络后重试；已有资料保持完整");}
         catch(javax.net.ssl.SSLException error){throw new Failure("服务的安全连接验证失败，请检查 HTTPS 地址与证书");}
         catch(java.io.IOException error){throw new Failure("无法连接 AI 服务，请检查网络与服务地址后重试");}
-        finally{connection.disconnect();}
+        finally{if(deadline!=null)deadline.cancel(false);cancellation.detach(connection);connection.disconnect();}
     }
 }

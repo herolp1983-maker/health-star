@@ -11,6 +11,10 @@ gradle.projectsEvaluated {
         failOnError = true
         formats = ['HTML', 'JSON']
         scanConfigurations = ['debugRuntimeClasspath']
+        // Official complete yearly JSON feeds avoid anonymous paginated API throttling.
+        // Updates stay enabled; unavailable feeds still fail the mandatory scan.
+        nvd.datafeedUrl = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz'
+        data.directory = new File(gradle.gradleUserHomeDir, 'caches/dependency-check-12.1.8').absolutePath
         // npm audit is a separate mandatory CI step; avoid duplicate remote audits.
         analyzers.nodeAudit.enabled = false
         analyzers.nodePackage.enabled = false

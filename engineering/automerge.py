@@ -72,7 +72,7 @@ def authorize(config, manifest, code, security, local, remote, rules, commit, *,
                 'Reviewed diff does not start at an identical verified root baseline; earlier feature commits may be unreviewed')
     require(type(remote.get('unresolved_blocking_findings')) is int and remote['unresolved_blocking_findings'] == 0,
             'Blocking AI findings are unresolved or unknown')
-    require(type(repair_limit) is int and 2 <= repair_limit <= 3 and
+    require(type(repair_limit) is int and repair_limit >= 2 and
             type(remote.get('fix_rounds')) is int and 0 <= remote['fix_rounds'] <= repair_limit,
             'Invalid global repair count')
     require(rules.get('source') in {'github-api', 'authenticated-github-ui'}, 'Untrusted rule evidence source')

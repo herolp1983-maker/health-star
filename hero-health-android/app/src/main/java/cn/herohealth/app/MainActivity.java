@@ -35,6 +35,8 @@ public final class MainActivity extends Activity {
     private final ExecutorService io=Executors.newSingleThreadExecutor();
     private final ExecutorService ai=Executors.newSingleThreadExecutor();
     private final java.util.concurrent.atomic.AtomicBoolean aiRunning=new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final java.util.concurrent.atomic.AtomicBoolean destroyed=new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final java.util.concurrent.atomic.AtomicReference<AiCancellation> activeAi=new java.util.concurrent.atomic.AtomicReference<>();
     private ValueCallback<Uri[]> chooser;
     private String exportRequest,exportText;
     private static final int PICK_FILE=100,EXPORT_FILE=101;
@@ -79,6 +81,7 @@ public final class MainActivity extends Activity {
     private WebResourceResponse response(String mime,byte[] bytes){return new WebResourceResponse(mime,null,200,"OK",responseHeaders(),new ByteArrayInputStream(bytes));}
     public final class LocalBridge {
         @JavascriptInterface public void postMessage(String message){io.execute(()->{
+            if(destroyed.get())return;
             String id="";try{
                 JSONObject request=new JSONObject(message);id=request.getString("id");String action=request.getString("action");JSONObject payload=request.optJSONObject("payload");Object result;
                 switch(action){
@@ -90,11 +93,13 @@ public final class MainActivity extends Activity {
                     case "testAiConnection":case "analyzeReport":case "analyzeSummary":case "analyzeCardBatch":case "reportPageCounts":case "healthChat":{
                         if(!aiRunning.compareAndSet(false,true)){reply(id,null,"已有 AI 任务正在进行，请稍后再试");return;}
                         String job=id;JSONObject input=payload;
+                        AiCancellation cancellation=new AiCancellation();activeAi.set(cancellation);
+                        if(destroyed.get()){cancellation.cancel();aiRunning.set(false);return;}
                         ai.execute(()->{Object answer=null;String failure=null;
-                            try{answer=new AiService(MainActivity.this,vault).analyze(action,input);}
+                            try{answer=new AiService(MainActivity.this,vault,cancellation).analyze(action,input);}
                             catch(AiHttp.Failure error){failure=error.getMessage();}
                             catch(Exception error){failure="AI 分析未完成，请检查文件、网络或服务配置后重试。已有资料保持完整。";}
-                            finally{aiRunning.set(false);}
+                            finally{activeAi.compareAndSet(cancellation,null);aiRunning.set(false);}
                             // Release before publishing the result: the next batch may start immediately.
                             reply(job,answer,failure);});return;
                     }
@@ -117,7 +122,7 @@ public final class MainActivity extends Activity {
     private void reply(String id,Object result,String error){
         String encoded=result==null?"null":result instanceof JSONObject?result.toString():result instanceof String?JSONObject.quote((String)result):String.valueOf(result);
         String script="window.heroNativeResult&&window.heroNativeResult("+JSONObject.quote(id)+","+encoded+","+(error==null?"null":JSONObject.quote(error))+")";
-        runOnUiThread(()->{if(web!=null&&!isFinishing())web.evaluateJavascript(script,null);});
+        runOnUiThread(()->{if(!destroyed.get()&&web!=null&&!isFinishing())web.evaluateJavascript(script,null);});
     }
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);
         if(request==PICK_FILE&&chooser!=null){chooser.onReceiveValue(result==RESULT_OK&&data!=null&&data.getData()!=null?new Uri[]{data.getData()}:null);chooser=null;}
@@ -130,5 +135,5 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed(){handleBack();}
     @Override protected void onPause(){super.onPause();if(web!=null)web.onPause();}
     @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();}
-    @Override protected void onDestroy(){if(chooser!=null)chooser.onReceiveValue(null);io.shutdown();ai.shutdownNow();if(web!=null){web.removeJavascriptInterface("HeroNative");web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onDestroy(){destroyed.set(true);AiCancellation cancellation=activeAi.getAndSet(null);if(cancellation!=null)cancellation.cancel();if(chooser!=null)chooser.onReceiveValue(null);io.shutdown();ai.shutdownNow();if(web!=null){web.removeJavascriptInterface("HeroNative");web.destroy();web=null;}super.onDestroy();}
 }

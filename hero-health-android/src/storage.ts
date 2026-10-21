@@ -1,4 +1,4 @@
-import {validateState,normalizeState,type HealthState} from './model';
+import {validateState,normalizeState,recoverInterruptedAnalyses,type HealthState} from './model';
 import {nativeAvailable,nativeCall,assertNativeStorage} from './native';
 const enc=new TextEncoder(),dec=new TextDecoder('utf-8',{fatal:true});
 const base64=(a:Uint8Array)=>{let s='';for(let i=0;i<a.length;i+=8192)s+=String.fromCharCode(...a.subarray(i,i+8192));return btoa(s);};
@@ -24,7 +24,7 @@ let database:Promise<IDBDatabase>|undefined;
 const db=()=>database??=new Promise((resolve,reject)=>{const r=indexedDB.open('hero-health-development',1);r.onupgradeneeded=()=>r.result.createObjectStore('state');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
 export async function readState():Promise<HealthState|null>{
  assertNativeStorage();
- if(nativeAvailable()){const s=await nativeCall<unknown>('readState');if(s===null)return null;validateState(s,true);return normalizeState(s);}
+ if(nativeAvailable()){const s=await nativeCall<unknown>('readState');if(s===null)return null;validateState(s,true);const recovered=recoverInterruptedAnalyses(s);return recovered===s?normalizeState(s):writeState(recovered);}
  const d=await db();return new Promise((resolve,reject)=>{const r=d.transaction('state','readonly').objectStore('state').get('current');r.onsuccess=()=>{try{if(!r.result){resolve(null);return;}validateState(r.result);resolve(normalizeState(r.result));}catch(e){reject(e);}};r.onerror=()=>reject(r.error);});
 }
 export async function writeState(state:HealthState):Promise<HealthState>{

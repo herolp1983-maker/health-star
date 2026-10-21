@@ -43,6 +43,17 @@ class AutomaticMergeTests(unittest.TestCase):
     def test_complete_current_evidence_authorizes_only_exact_sha_squash(self):
         plan = self.decide()
         self.assertEqual(plan['status'], 'ELIGIBLE')
+
+    def test_fourth_batch_still_requires_its_own_explicit_limit(self):
+        self.remote['fix_rounds'] = 4
+        with self.assertRaises(RuntimeError):
+            automerge.authorize(self.config, self.manifest, self.code, self.security,
+                                self.local, self.remote, self.rules, self.sha,
+                                now=self.now, repair_limit=3)
+        plan = automerge.authorize(self.config, self.manifest, self.code, self.security,
+                                   self.local, self.remote, self.rules, self.sha,
+                                   now=self.now, repair_limit=4)
+        self.assertEqual(plan['status'], 'ELIGIBLE')
         self.assertEqual(plan['expected_head_sha'], self.sha)
         self.assertEqual(plan['merge_method'], 'squash')
         self.assertNotIn('admin', plan)

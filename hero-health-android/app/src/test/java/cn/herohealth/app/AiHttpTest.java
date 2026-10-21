@@ -52,4 +52,17 @@ public class AiHttpTest {
         Fake timeout=new Fake();timeout.timeout=true;
         assertTrue(assertThrows(AiHttp.Failure.class,()->AiHttp.exchange(timeout,"test-only","{}")).getMessage().contains("超时"));assertTrue(timeout.closed);
     }
+    @Test public void cancelledOperationNeverTransmitsAndDisconnectsActiveConnection()throws Exception{
+        AiCancellation cancelled=new AiCancellation();cancelled.cancel();Fake before=new Fake();
+        assertThrows(AiHttp.Failure.class,()->AiHttp.exchange(before,"test-only","{}",cancelled));
+        assertEquals(0,before.sent.size());assertTrue(before.closed);
+        Fake active=new Fake();AiCancellation running=new AiCancellation();running.attach(active);running.cancel();
+        assertTrue(active.closed);assertThrows(AiHttp.Failure.class,running::check);
+    }
+    @Test public void cancellationDuringReadRejectsPartialResult()throws Exception{
+        AiCancellation cancellation=new AiCancellation();
+        Fake connection=new Fake(){@Override public InputStream getInputStream(){cancellation.cancel();return new ByteArrayInputStream(response);}};
+        assertThrows(AiHttp.Failure.class,()->AiHttp.exchange(connection,"test-only","{}",cancellation));
+        assertTrue(connection.closed);
+    }
 }

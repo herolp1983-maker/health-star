@@ -23,8 +23,10 @@ import java.util.Set;
 final class AiService {
     private final Context context;
     private final HealthVault vault;
-    AiService(Context context,HealthVault vault){this.context=context.getApplicationContext();this.vault=vault;}
+    private final AiCancellation cancellation;
+    AiService(Context context,HealthVault vault,AiCancellation cancellation){this.context=context.getApplicationContext();this.vault=vault;this.cancellation=cancellation;}
     JSONObject analyze(String kind,JSONObject request) throws Exception {
+        cancellation.check();
         if(kind.equals("reportPageCounts"))return reportPageCounts(request);
         AiConfigPolicy.Config config=vault.aiCredential();
         if(config.apiKey.isEmpty())throw new AiHttp.Failure("请先在设置 → AI 服务保存地址、模型和 API Key");
@@ -77,7 +79,7 @@ final class AiService {
         return complete(config,messages,kind.equals("testAiConnection"),result);
     }
     private JSONObject complete(AiConfigPolicy.Config config,JSONArray messages,boolean test,JSONObject metadata)throws Exception{
-        String wire=AiHttp.post(config.endpoint,config.apiKey,AiProtocol.request(config.endpoint,config.model,messages,test).toString());
+        String wire=AiHttp.post(config.endpoint,config.apiKey,AiProtocol.request(config.endpoint,config.model,messages,test).toString(),cancellation);
         return metadata.put("output",AiProtocol.parse(wire,test)).put("model",config.model).put("host",new java.net.URI(config.endpoint).getHost());
     }
 

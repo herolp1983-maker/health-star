@@ -5,29 +5,28 @@ $projectRoot=Join-Path $repoRoot 'hero-health-android'
 $evidenceRoot=Join-Path $repoRoot '.engineering/local'
 New-Item -ItemType Directory -Path $evidenceRoot -Force | Out-Null
 $results=[Collections.Generic.List[object]]::new()
-function Invoke-Check([string]$Name,[scriptblock]$Action) {
+. (Join-Path $PSScriptRoot 'process-check.ps1')
+function Invoke-Check([string]$Name,[string]$File,[string[]]$Arguments) {
     $logPath=Join-Path $evidenceRoot ($Name+'.log')
-    # Windows PowerShell turns native stderr warnings into error records when
-    # ErrorActionPreference is Stop. The native process exit code is the gate.
-    $priorPreference=$ErrorActionPreference
-    try {
-        $ErrorActionPreference='Continue'
-        $global:LASTEXITCODE=0
-        & $Action *> $logPath
-        $exitCode=$LASTEXITCODE
-    } finally {
-        $ErrorActionPreference=$priorPreference
-    }
-    $results.Add(@{name=$Name;exit_code=$exitCode;log=$logPath})
+    $result=Invoke-VerifiedProcess -File $File -Arguments $Arguments -Log $logPath
+    $exitCode=$result.exit_code
+    $results.Add(@{name=$Name;exit_code=$exitCode;started=$result.started;log=$logPath})
     Write-Output "$Name exit=$exitCode"
     if($exitCode -ne 0){throw "$Name failed. See local log: $logPath"}
 }
 try {
+    Get-Command npm.cmd -CommandType Application -ErrorAction Stop | Out-Null
+    $toolsRoot=Join-Path $projectRoot '.tools'
+    $jdkFolder=Get-ChildItem -LiteralPath $toolsRoot -Directory -Filter 'jdk-*' | Select-Object -First 1
+    if(!$jdkFolder){throw 'JDK missing; use existing project setup instructions first'}
+    foreach($required in @("$($jdkFolder.FullName)/bin/java.exe","$toolsRoot/android-sdk/platforms/android-35/android.jar","$projectRoot/gradlew.bat")){
+        if(!(Test-Path -LiteralPath $required -PathType Leaf)){throw "Required build tool missing: $required"}
+    }
     Push-Location -LiteralPath $projectRoot
     try {
         if(!$SkipWeb){
-            Invoke-Check 'domain-tests' { & npm.cmd test }
-            Invoke-Check 'web-build' { & npm.cmd run build:web }
+            Invoke-Check 'domain-tests' 'npm.cmd' @('test')
+            Invoke-Check 'web-build' 'npm.cmd' @('run','build:web')
         }
     } finally { Pop-Location }
     $toolsRoot=Join-Path $projectRoot '.tools'
@@ -75,15 +74,7 @@ try {
     try {
         $gradleOptions=@('--no-daemon','--console=plain',':app:testDebugUnitTest',':app:lintDebug',':app:assembleDebug')
         if($Offline){$gradleOptions=@('--offline')+$gradleOptions}
-        # Invoke the batch wrapper in this scope. A nested PowerShell scriptblock
-        # can retain an unrelated LASTEXITCODE while Gradle continues writing.
-        $androidLog=Join-Path $evidenceRoot 'android-debug.log'
-        $global:LASTEXITCODE=0
-        & "$stageRoot/gradlew.bat" @gradleOptions *> $androidLog
-        $androidExit=$LASTEXITCODE
-        $results.Add(@{name='android-debug';exit_code=$androidExit;log=$androidLog})
-        Write-Output "android-debug exit=$androidExit"
-        if($androidExit -ne 0){throw "android-debug failed. See local log: $androidLog"}
+        Invoke-Check 'android-debug' "$stageRoot/gradlew.bat" $gradleOptions
     }finally{Pop-Location}
     # Copy only test/lint evidence, never signing data or APKs.
     $jvmEvidence=Join-Path $evidenceRoot ('jvm-'+[guid]::NewGuid().ToString('N'))

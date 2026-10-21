@@ -17,6 +17,6 @@
   "gate_mode": "agent-verified",
   "require_enforced_branch_rules": false,
   "high_risk_independent_security_review": true,
-  "follow_up_minutes": 10,
+  "follow_up_minutes": 30,
   "follow_up_max_hours": 24
 }
