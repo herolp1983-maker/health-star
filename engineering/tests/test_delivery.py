@@ -15,6 +15,20 @@ import delivery as d
 
 
 class GateTests(unittest.TestCase):
+    def test_explicit_third_repair_batch_is_bound_to_one_delivery(self):
+        ledger = {'id': 'delivery-1', 'fix_rounds': 2, 'fixes': [{}, {}]}
+        with self.assertRaises(RuntimeError):
+            d.reserve_fix(ledger, 'CI repair')
+        ledger['repair_exception'] = {'delivery_id': 'delivery-1', 'max_rounds': 3,
+                                      'approved_by': 'user', 'scope': 'this delivery only',
+                                      'approval': 'Explicit approval for third batch', 'approved_utc': 1}
+        self.assertEqual(d.reserve_fix(ledger, 'CI repair')['fix_rounds'], 3)
+        with self.assertRaises(RuntimeError):
+            d.reserve_fix(ledger, 'another repair')
+        ledger['repair_exception']['delivery_id'] = 'different-delivery'
+        with self.assertRaises(RuntimeError):
+            d.repair_limit(ledger)
+
     def report(self):
         return {'status': 'PASS', 'base': 'base', 'digest': 'digest', 'complete': True,
                 'reviewer': 'subagent:fresh-session', 'coverage': ['all changed paths, behavior and failure boundaries'], 'findings': []}

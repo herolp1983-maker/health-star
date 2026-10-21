@@ -25,7 +25,7 @@ Evidence is local JSON under .engineering and must be populated from real authen
 
 Remote JSON fields:
 
-`repository`, `pr_number`, `state` (OPEN), `draft` (false), `base_branch`, `head_sha`, `head_tree_sha`, `head_tree_verified` (true), `base_sha`, `current_base_sha`, `up_to_date` (true), `candidate_digest`, `fetched_at`, `checks`, `unresolved_blocking_findings` (0), `fix_rounds` (0..2). For a distinct reconstructed root baseline, also record `base_tree_sha`, `base_tree_verified` (true) and `base_parent_count` (0), derived from authenticated GitHub commit/file evidence.
+`repository`, `pr_number`, `state` (OPEN), `draft` (false), `base_branch`, `head_sha`, `head_tree_sha`, `head_tree_verified` (true), `base_sha`, `current_base_sha`, `up_to_date` (true), `candidate_digest`, `fetched_at`, `checks`, `unresolved_blocking_findings` (0), `fix_rounds` (normally 0..2; 3 only for an explicitly user-authorized exception bound to the delivery ledger). For a distinct reconstructed root baseline, also record `base_tree_sha`, `base_tree_verified` (true) and `base_parent_count` (0), derived from authenticated GitHub commit/file evidence.
 
 Each check has `name`, `head_sha`, `status` (COMPLETED), `conclusion` (SUCCESS), `app_slug` (github-actions), `workflow_path` (.github/workflows/engineering.yml). Obtain the workflow path/provenance from actual run/check metadata; do not fill it merely because the job name matches. Preserve raw response references locally for audit. Fresh remote metadata is at most 60 seconds old at authorization.
 

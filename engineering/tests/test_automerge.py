@@ -47,6 +47,15 @@ class AutomaticMergeTests(unittest.TestCase):
         self.assertEqual(plan['merge_method'], 'squash')
         self.assertNotIn('admin', plan)
 
+    def test_third_batch_requires_explicit_bound_limit(self):
+        self.remote['fix_rounds'] = 3
+        with self.assertRaises(RuntimeError):
+            self.decide()
+        plan = automerge.authorize(self.config, self.manifest, self.code, self.security,
+                                   self.local, self.remote, self.rules, self.sha,
+                                   now=self.now, repair_limit=3)
+        self.assertEqual(plan['status'], 'ELIGIBLE')
+
     def test_agent_verified_free_private_repository_requires_real_checks_and_honest_rules(self):
         self.config.update(gate_mode='agent-verified', require_enforced_branch_rules=False)
         self.rules.update(enforced=False, server_enforcement_unavailable=True,

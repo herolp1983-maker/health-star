@@ -26,7 +26,7 @@ def fresh(value, now, age, label):
             f'{label} is missing, stale or future-dated')
 
 
-def authorize(config, manifest, code, security, local, remote, rules, commit, *, now=None):
+def authorize(config, manifest, code, security, local, remote, rules, commit, *, now=None, repair_limit=2):
     now = time.time() if now is None else now
     require(config.get('merge_policy') == 'automatic-squash-exact-head', 'Automatic merge policy is not enabled')
     mode = config.get('gate_mode')
@@ -72,7 +72,9 @@ def authorize(config, manifest, code, security, local, remote, rules, commit, *,
                 'Reviewed diff does not start at an identical verified root baseline; earlier feature commits may be unreviewed')
     require(type(remote.get('unresolved_blocking_findings')) is int and remote['unresolved_blocking_findings'] == 0,
             'Blocking AI findings are unresolved or unknown')
-    require(type(remote.get('fix_rounds')) is int and 0 <= remote['fix_rounds'] <= 2, 'Invalid global repair count')
+    require(type(repair_limit) is int and 2 <= repair_limit <= 3 and
+            type(remote.get('fix_rounds')) is int and 0 <= remote['fix_rounds'] <= repair_limit,
+            'Invalid global repair count')
     require(rules.get('source') in {'github-api', 'authenticated-github-ui'}, 'Untrusted rule evidence source')
     require(rules.get('verified') is True, 'Branch-rule inventory was not verified')
     if mode == 'server-enforced':
@@ -147,7 +149,7 @@ def main():
     plan = authorize(d.read(d.ROOT / 'engineering/project.json'), manifest,
                      d.read(d.CANDIDATE / 'code-review.json'), d.read(d.CANDIDATE / 'security-review.json'),
                      d.read(d.CANDIDATE / 'pre-delivery.json'), remote,
-                     d.read(d.ROOT / args.rules), remote_commit)
+                     d.read(d.ROOT / args.rules), remote_commit, repair_limit=d.repair_limit(ledger))
     plan['delivery_id'] = ledger['id']
     d.save(d.EVIDENCE / 'merge-plan.json', plan)
     print(json.dumps(plan, ensure_ascii=False, indent=2))

@@ -15,7 +15,7 @@ User authorized Android development on 2026-10-19 and selected local features fi
 
 ## Engineering delivery
 
-Use the repository-root `.agents/skills/` and `engineering/PROTOCOL.md` for feature PRs. `engineering/check-local.ps1` runs debug verification without release keys; do not substitute the existing signed release build script. Daily PRs keep versionName `0.3.0`, versionCode `4` and signing identity unchanged until an explicit release request.
+Use the repository-root `.agents/skills/` and `engineering/PROTOCOL.md` for feature PRs. `engineering/check-local.ps1` runs debug verification without release keys; do not substitute the existing signed release build script. The current production source baseline is versionName `0.5.1`, versionCode `8`. Daily PRs preserve those values and signing identity until an explicit release request; never downgrade an existing app's upgrade version to match an older project note.
 
 ## Code Review Rules
 

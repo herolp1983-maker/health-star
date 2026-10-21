@@ -341,9 +341,24 @@ def security(args):
         raise RuntimeError('Potential secrets detected; values redacted, inspect files locally')
 
 
+def repair_limit(ledger):
+    """Keep the default cap unless this delivery records explicit user consent."""
+    exception = ledger.get('repair_exception')
+    if exception is None:
+        return 2
+    if not isinstance(exception, dict) or exception.get('delivery_id') != ledger.get('id') or \
+            exception.get('max_rounds') != 3 or \
+            exception.get('approved_by') != 'user' or exception.get('scope') != 'this delivery only' or \
+            not isinstance(exception.get('approval'), str) or not exception['approval'].strip() or \
+            type(exception.get('approved_utc')) not in (int, float) or exception['approved_utc'] <= 0:
+        raise RuntimeError('Malformed user-authorized repair exception')
+    return 3
+
+
 def reserve_fix(ledger, reason):
-    if type(ledger.get('fix_rounds')) is not int or not 0 <= ledger['fix_rounds'] < 2:
-        raise RuntimeError('Global two-batch repair budget exhausted or invalid')
+    limit = repair_limit(ledger)
+    if type(ledger.get('fix_rounds')) is not int or not 0 <= ledger['fix_rounds'] < limit:
+        raise RuntimeError(f'Global {limit}-batch repair budget exhausted or invalid')
     if not reason.strip():
         raise RuntimeError('A repair reason is required')
     ledger['fix_rounds'] += 1
@@ -375,7 +390,7 @@ def ledger(args):
         item = read(path)
         new_base = base_sha(args.base)
         config = read(ROOT / 'engineering/project.json')
-        if not args.reason.strip() or type(item.get('fix_rounds')) is not int or not 0 <= item['fix_rounds'] <= 2:
+        if not args.reason.strip() or type(item.get('fix_rounds')) is not int or not 0 <= item['fix_rounds'] <= repair_limit(item):
             raise RuntimeError('Invalid base advance reason or persisted repair count')
         if new_base != base_sha('origin/' + config['default_branch']):
             raise RuntimeError('New review base must match the fetched default branch')
