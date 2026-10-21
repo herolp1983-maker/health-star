@@ -1,0 +1,18 @@
+// CI-only; keeps everyday build and existing release configuration untouched.
+initscript {
+    repositories { maven { url 'https://plugins.gradle.org/m2/' }; mavenCentral() }
+    dependencies { classpath 'org.owasp:dependency-check-gradle:12.1.8' }
+}
+gradle.projectsEvaluated {
+    def app = gradle.rootProject.project(':app')
+    app.apply plugin: org.owasp.dependencycheck.gradle.DependencyCheckPlugin
+    app.dependencyCheck {
+        failBuildOnCVSS = 7.0
+        failOnError = true
+        formats = ['HTML', 'JSON']
+        scanConfigurations = ['debugRuntimeClasspath']
+        // npm audit is a separate mandatory CI step; avoid duplicate remote audits.
+        analyzers.nodeAudit.enabled = false
+        analyzers.nodePackage.enabled = false
+    }
+}

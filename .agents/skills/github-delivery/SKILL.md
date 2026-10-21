@@ -1,0 +1,22 @@
+---
+name: github-delivery
+description: Review and test a feature, submit its PR and automatically Squash merge the exact verified head after configured gates pass.
+---
+
+# github-delivery
+
+Trigger: “当前功能开发完成，执行完整的工程化交付流程。” or an explicit request to submit/deliver the agreed change as a PR.
+Read engineering/PROTOCOL.md in full. It defines evidence, permissions, repair budget and report semantics.
+
+1. Read engineering/AUTONOMOUS.md. Inspect Git/remote/default branch and actual account capabilities. The user's 2026-10-20 instruction authorizes fully automatic delivery and phase 2 for the health app. Require an existing base commit, intended repository and a feature branch. Agent-verified mode is permitted for this free private repository; disclose that GitHub cannot enforce those rules against other writers.
+2. Fetch the authorized base; save requirements locally. Start/resume the delivery ledger; snapshot candidate. Check secrets before giving any patch to an independent agent.
+3. Invoke code-review (fresh context) and security-review; collect all Critical/High findings. Reserve one fix batch via delivery.py fix BEFORE any repair, apply the consolidated changes without weakening existing tests/checks, then resnapshot/review. Share at most TWO batches across all local/CI fixes and all restarts.
+4. Invoke pre-delivery-check. Any mandatory failure or unavailable independent review blocks commit/push/Ready. Two used batches forbid further repairs; delivery may proceed if the second batch passed all checks. Unrelated staging must be removed from the planned commit without discarding user work; unrelated tracked changes require an isolated candidate checkout as described in PROTOCOL.md.
+5. Stage explicit verified paths, inspect the staged diff for accidental files or secrets and verify the tree against the reviewed manifest. Use Conventional Commits; commit and push ONLY the feature branch. Prefer the connected GitHub tools where gh/git authentication is unavailable; preserve existing remote tree and use expected old ref SHA. Confirm actual resulting head matches reviewed content.
+6. Create/update one PR to the default branch, attach it to this chat, and place HIGH-RISK prominently at the top of the body with affected paths (a label is optional if unavailable). Preserve the Delivery record, including ID/base/head and shared repair count.
+7. Poll real Actions/check runs on that PR head using the eight-minute deadline and 30-second interval in PROTOCOL.md. Missing or skipped required jobs cannot pass. If CI fails and a batch remains, inspect logs, reserve it, repair, repeat local reviews/checks, commit/push and use remaining wait time. On timeout arrange the bounded automatic follow-up in AUTONOMOUS.md and return PENDING; never require a user check or manual merge to finish. If the scheduler is unavailable, report that automation limitation without claiming queued follow-up.
+8. Verify repository Codex review availability; if enabled, send @codex review for the new head and inspect actual review output. Invocation authorizes this PR review request. No comments/emoji/keywords-based approval heuristic. Report advisory status honestly.
+9. Read actual branch-rule capability and re-fetch the current PR/head and check provenance. In server-enforced mode, unknown, unenforced or bypassable rules block merging. In agent-verified mode, require the exact current five GitHub Actions checks and all local reviews, and record the absence of server enforcement explicitly. HIGH-RISK requires a second independent security reviewer distinct from the code reviewer.
+10. Run engineering/automerge.py with current normalized remote/rule evidence and the reviewed commit. Only an ELIGIBLE plan authorizes the connected GitHub merge_pull_request call, using expected_head_sha and merge_method=squash. Do not enable native queued auto-merge unless a real head-bound AI attestation check is also required; new pushes would otherwise reuse stale local review. Re-fetch the PR and main to verify the actual merge SHA/tree. Never use --admin or bypass API flags.
+
+Output: PR link, candidate/head, gate results, repair count, merge state MERGED/PENDING/BLOCKED, verified merge SHA, gate mode and automatic follow-up status. Never claim agent-verified checks are enforced by GitHub. Do not ask the user to click Merge. Preserve explicit release/tag/publication authorization boundaries.

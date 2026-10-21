@@ -1,0 +1,22 @@
+plugins { id 'com.android.application' }
+def signingFile = rootProject.file('signing.properties')
+def signingValues = new Properties()
+if (signingFile.exists()) signingFile.withInputStream { signingValues.load(it) }
+android {
+    namespace 'cn.herohealth.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'cn.herohealth.app'
+        minSdk 26
+        targetSdk 35
+        versionCode 8
+        versionName '0.5.1'
+    }
+    signingConfigs { release { if (signingFile.exists()) { storeFile rootProject.file(signingValues['storeFile']); storePassword signingValues['storePassword']; keyAlias signingValues['keyAlias']; keyPassword signingValues['keyPassword'] } } }
+    buildTypes { release { if(signingFile.exists()) signingConfig signingConfigs.release; minifyEnabled false; debuggable false } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { abortOnError true }
+    buildFeatures { buildConfig true }
+    testOptions { unitTests.returnDefaultValues = true }
+}
+dependencies { testImplementation 'junit:junit:4.13.2'; testImplementation 'org.json:json:20240303' }

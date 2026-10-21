@@ -1,0 +1,41 @@
+rules:
+  - id: android-cleartext-enabled
+    languages: [generic]
+    severity: ERROR
+    message: Cleartext traffic explicitly enabled. Use native HTTPS and verified certificates.
+    paths:
+      include: ["**/AndroidManifest.xml", "**/res/xml/*.xml"]
+    pattern-regex: '(?:usesCleartextTraffic|cleartextTrafficPermitted)\s*=\s*"true"'
+  - id: android-ssl-error-proceed
+    languages: [java]
+    severity: ERROR
+    message: Never ignore a WebView TLS certificate error.
+    patterns:
+      - pattern: $HANDLER.proceed()
+      - pattern-inside: |
+          public void onReceivedSslError(...) { ... }
+  - id: android-universal-file-access
+    languages: [java]
+    severity: ERROR
+    message: Universal access from file URLs breaks the native bridge trust boundary.
+    pattern: $SETTINGS.setAllowUniversalAccessFromFileURLs(true)
+  - id: android-accept-all-hostnames
+    languages: [java]
+    severity: ERROR
+    message: Hostname verification must validate the certificate hostname.
+    patterns:
+      - pattern-inside: |
+          new HostnameVerifier() { ... }
+      - pattern: |
+          public boolean verify(...) { return true; }
+  - id: android-empty-trust-manager
+    languages: [java]
+    severity: ERROR
+    message: Empty server certificate verification accepts untrusted TLS peers.
+    pattern: |
+      public void checkServerTrusted(java.security.cert.X509Certificate[] $CHAIN, String $AUTH) { }
+  - id: browser-health-plaintext-storage
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: Review browser persistent storage for health data or credentials. Do not store either as plaintext.
+    pattern: localStorage.setItem(...)

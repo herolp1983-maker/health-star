@@ -1,0 +1,25 @@
+# Engineering evidence and local tools are never delivery inputs.
+.engineering/
+.engineering-tools/
+**/node_modules/
+**/.tools/
+**/.keys/
+**/.gradle/
+**/.cache/
+**/build/
+**/dist/
+**/local.properties
+**/signing.properties
+**/*.jks
+**/*.keystore
+**/*.apk
+**/*.aab
+**/*.log
+**/__pycache__/
+**/playwright-report/
+**/test-results/
+hero-health-android/verification/
+hero-health-android/delivery/
+.env
+.env.*
+!.env.example

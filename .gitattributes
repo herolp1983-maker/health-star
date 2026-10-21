@@ -1,0 +1,4 @@
+hero-health-android/gradlew text eol=lf
+hero-health-android/gradlew.bat text eol=crlf
+*.yml text eol=lf
+*.yaml text eol=lf
