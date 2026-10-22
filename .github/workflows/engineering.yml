@@ -119,7 +119,7 @@ jobs:
   dependencies:
     name: Dependencies
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -140,14 +140,28 @@ jobs:
         with:
           packages: ''
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
       - name: Audit npm production and development dependencies
         working-directory: hero-health-android
         run: |
           npm ci
           npm audit --audit-level=high
+      - name: Restore verified NVD download cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .engineering/nvd-cache
+          key: ${{ runner.os }}-nvd-verified-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ runner.os }}-nvd-verified-v1-
       - name: OWASP Android runtime dependency analysis
-        working-directory: hero-health-android
-        run: bash gradlew --no-daemon --console=plain --init-script ../engineering/dependency-check.init.gradle :app:dependencyCheckAnalyze
+        run: python engineering/nvd_feed.py --cache .engineering/nvd-cache --output "$RUNNER_TEMP/nvd-feeds"
+      - name: Preserve verified feeds and resumable downloads
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .engineering/nvd-cache
+          key: ${{ runner.os }}-nvd-verified-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
   risk-detection:
     name: Risk Detection

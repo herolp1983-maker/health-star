@@ -11,10 +11,15 @@ gradle.projectsEvaluated {
         failOnError = true
         formats = ['HTML', 'JSON']
         scanConfigurations = ['debugRuntimeClasspath']
-        // Official complete yearly JSON feeds avoid anonymous paginated API throttling.
-        // Updates stay enabled; unavailable feeds still fail the mandatory scan.
-        nvd.datafeedUrl = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-{0}.json.gz'
-        data.directory = new File(gradle.gradleUserHomeDir, 'caches/dependency-check-12.1.8').absolutePath
+        // The wrapper verifies all official feeds before exposing them over loopback.
+        def feed = System.getenv('HERO_NVD_FEED_URL')
+        def database = System.getenv('HERO_NVD_DATABASE')
+        if (!feed || !(feed ==~ /http:\/\/127\.0\.0\.1:[0-9]+\/nvdcve-2\.0-\{0\}\.json\.gz/) || !database) {
+            throw new GradleException('Use engineering/nvd_feed.py to prepare verified NVD data before scanning')
+        }
+        nvd.datafeedUrl = feed
+        // A fresh database prevents a restored SQL cache from hiding CVE records.
+        data.directory = database
         // npm audit is a separate mandatory CI step; avoid duplicate remote audits.
         analyzers.nodeAudit.enabled = false
         analyzers.nodePackage.enabled = false
