@@ -22,7 +22,7 @@ import zlib
 BASE = 'https://nvd.nist.gov/feeds/json/cve/2.0/'
 ATTEMPTS = 4
 READ_TIMEOUT = 30
-MAX_SECONDS = 900
+MAX_SECONDS = 2400
 
 
 def metadata(text):
@@ -43,7 +43,7 @@ def metadata(text):
 def remaining(deadline):
     seconds = deadline - time.monotonic()
     if seconds <= 0:
-        raise TimeoutError('NVD preparation exceeded its 15-minute budget')
+        raise TimeoutError('NVD preparation exceeded its 40-minute budget')
     return min(READ_TIMEOUT, seconds)
 
 
@@ -152,7 +152,7 @@ def prepare(cache, output):
     deadline = time.monotonic() + MAX_SECONDS
     year = datetime.now(timezone(timedelta(hours=14))).year
     kinds = [str(value) for value in range(2002, year + 1)] + ['modified']
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         results = dict(executor.map(lambda kind: fetch_feed(kind, cache, output, deadline), kinds))
     # Dependency-Check's native feed protocol; all complete yearly feeds remain included.
     properties = ['lastModifiedDate=' + results['modified']['lastModifiedDate']]
