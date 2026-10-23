@@ -20,7 +20,7 @@ from urllib.request import Request, urlopen
 import zlib
 
 BASE = 'https://nvd.nist.gov/feeds/json/cve/2.0/'
-ATTEMPTS = 4
+ATTEMPTS = 12
 READ_TIMEOUT = 30
 MAX_SECONDS = 2400
 
@@ -138,7 +138,7 @@ def fetch_feed(kind, cache, output, deadline):
             print(f'NVD {kind}: attempt {attempt + 1}/{ATTEMPTS} failed ({type(error).__name__})', flush=True)
             if attempt + 1 == ATTEMPTS:
                 raise RuntimeError(f'NVD {kind}: all verified download attempts failed') from error
-            delay = min(2 ** (attempt + 1), remaining(deadline))
+            delay = min(15, 2 ** (attempt + 1), remaining(deadline))
             time.sleep(delay)
     raise AssertionError('Unreachable')
 

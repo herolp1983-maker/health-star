@@ -52,6 +52,23 @@ class FeedTests(unittest.TestCase):
         self.run_download(response)
         self.assertEqual(len(calls), 2)
 
+    def test_recovery_beyond_four_timeouts_has_capped_backoff(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); cache = root / 'cache'; output = root / 'output'
+            cache.mkdir(); output.mkdir(); calls = []
+            def request(req, **kwargs):
+                if req.full_url.endswith('.meta'):
+                    return Response(self.meta)
+                calls.append(req.full_url)
+                if len(calls) <= 6:
+                    raise TimeoutError('simulated transient feed interruption')
+                return Response(self.payload)
+            with patch.object(n, 'urlopen', side_effect=request), patch.object(n.time, 'sleep') as sleep:
+                n.fetch_feed('2010', cache, output, time.monotonic() + 600)
+            self.assertEqual(len(calls), 7)
+            self.assertTrue(all(0 < call.args[0] <= 15 for call in sleep.call_args_list))
+            self.assertEqual((output / 'nvdcve-2.0-2010.json.gz').read_bytes(), self.payload)
+
     def test_ignored_range_restarts_file_instead_of_appending(self):
         calls = []
         def response(request):
