@@ -8,7 +8,7 @@ description: Verify current independent reviews and run local JVM tests, web tes
 Read engineering/PROTOCOL.md and project.json.
 Input: frozen base/candidate and completed code-review.json/security-review.json.
 
-1. Run python engineering/delivery.py gate to reject absent, stale or incomplete reviews and Critical/High findings.
+1. Require bound actual preflight and reserve local-checks with engineering/control.py before the first local verification. Reserve the independent reviews before dispatch. Run python engineering/delivery.py gate to reject absent/stale/incomplete reviews, control records and Critical/High findings. Do not reserve or rerun a phase twice for unchanged content.
 2. On Windows run pwsh -NoProfile -File engineering/check-local.ps1. It prepares bundled web assets then runs testDebugUnitTest, lintDebug and assembleDebug in an owned ASCII staging workspace without copying release secrets. On Linux run npm ci, npm test and npm run build:web in hero-health-android, then ./gradlew --no-daemon --console=plain :app:testDebugUnitTest :app:lintDebug :app:assembleDebug. Check all exit codes. No connectedAndroidTest.
 3. Run python engineering/validate.py for workflow/skill schema checks and python -m unittest discover -s engineering/tests for engineering invariants.
 4. Inspect diff --check and exact intended staged files, preserving original assertions, version numbers, production settings and existing scoped instructions. Fail on staged secrets, private health records, generated assets, APKs, signing material or temporary evidence. Run the candidate/review gate again after checks to catch source changes.

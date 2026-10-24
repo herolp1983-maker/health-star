@@ -35,17 +35,21 @@ Rules JSON fields:
 
 pre-delivery.json is bound to candidate base/digest with `complete: true`, `status: PASS` and `checks` containing domain-tests, web-build, android-debug, engineering-config and engineering-tests with exit_code 0. Every reported command must succeed; a headline PASS cannot contradict a failed command. Build logs alone are insufficient. The plan also loads the two review reports and validates them with delivery.py.
 
-## Unattended continuation after eight minutes
+## Bounded observation after eight minutes
 
-If a real PR is still waiting after the foreground wait budget, use the Codex app heartbeat automation tool to create/update a follow-up in THIS chat at the configured follow_up_minutes interval (currently thirty minutes). Search the task's existing automations first; do not create duplicates. Store PR/repository, delivery ledger ID, expected head, candidate paths, used fix batches and a 24-hour absolute expiry. The heartbeat must:
+When authorized GITHUB_TOKEN and a host completion callback are actually provisioned, engineering/watch.py can poll without model calls. It never merges. Its terminal result must return to the agent for fresh gate verification. Connector credentials must not be extracted. No standalone token/callback is configured here, so the supported active fallback remains quiet30-minute connector follow-up; do not claim event-driven or zero-token waiting. Both modes use the same control deadline, never a newly calculated extension. See DELIVERY-CHECKLIST.md.
+
+If a real PR is still waiting after the foreground wait budget and standalone script transport is unavailable, use the Codex app heartbeat automation tool to create/update a follow-up in THIS chat at the configured follow_up_minutes interval (currently thirty minutes). Search the task's existing automations first; do not create duplicates. Store PR/repository, delivery ledger ID, expected head, candidate paths, used fix batches and the original control deadline (current maximum two hours). The heartbeat must:
 
 1. Stay quiet on unchanged/non-actionable state. Notify only on merge, blocking failure, expiry or needed account action.
 2. Fetch fresh head/check/rule data. Resume the same shared two-batch repair ledger; chat restarts or CI retries do not reset it.
 3. If the head changed, invalidate old local evidence; rerun independent reviews/checks before any automatic merge. Never assume an external push was reviewed.
-4. Generate the merge plan, perform the exact-head Squash API merge if ELIGIBLE, verify actual merged state, then pause/delete this monitor. Closed PRs also terminate monitoring. Failure after the persisted authorized repair limit, unavailable gates, failed auth or 24-hour expiry reports BLOCKED and stops. Do not silently run indefinitely.
+4. Generate the merge plan, perform the exact-head Squash API merge if ELIGIBLE, verify actual merged state, then pause/delete this monitor. Closed PRs also terminate monitoring. Failure after the persisted authorized repair limit, unavailable gates, failed auth or control-deadline expiry reports BLOCKED and stops. Do not silently run indefinitely.
 
 The user has authorized this follow-up as part of their fully automatic delivery request. If scheduling is unavailable, report the concrete limitation; do not claim that a background job exists. Never create an empty monitor before an actual PR exists. Account/payment changes remain the user's responsibility and are not a hand-merge requirement.
 
 ## Current free-plan capability
 
 Live GitHub UI on 2026-10-20: Rulesets and classic branch-protection pages state rules will not be enforced on this private repository under the current account; General shows native Allow auto-merge disabled. Codex created the README-only baseline commit `793bef7565415150397eb2c419c730c695119001` on main. The user chose a free automatic path: Codex performs independent review, local checks and real CI verification, then exact-head Squash merging through the API. This is agent-side enforcement, not a server-side guarantee. Do not make the health app public or purchase/upgrade on the user's behalf.
+
+PR #1 completed the first real automatic merge on2026-10-24: d1f803dc05c83948496946cbe24cdebaad87fa51. The README-only bootstrap is historical; future candidates start from actual current main. Current rules/capability must still be verified for every delivery.

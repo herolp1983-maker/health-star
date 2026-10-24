@@ -18,5 +18,12 @@
   "require_enforced_branch_rules": false,
   "high_risk_independent_security_review": true,
   "follow_up_minutes": 30,
-  "follow_up_max_hours": 24
+  "follow_up_max_hours": 2,
+  "process_control": {
+    "required": true,
+    "max_wall_minutes": 120,
+    "max_costly_phase_runs_per_candidate": 1,
+    "max_log_excerpt_chars": 4000,
+    "compatibility_paths": ["engineering/nvd_feed.py", "engineering/dependency-check.init.gradle", "engineering/watch.py"]
+  }
 }

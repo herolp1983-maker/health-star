@@ -4,6 +4,8 @@ Current policy: the user's 2026-10-20 request supersedes manual merging. Read [A
 
 Read this when running any of the six skills. Commands below run from the Git repository root. `python` means a Python 3.12+ executable; this machine's bundled Python path is recorded in the setup report. Never install a global runtime just to satisfy this spelling.
 
+Operational entrypoint: [DELIVERY-CHECKLIST.md](DELIVERY-CHECKLIST.md). Its preflight template, cost reservations and failure strategy records are required by the current project profile; the gate checks them through control.py. See [RETROSPECTIVE.md](RETROSPECTIVE.md) for the concrete lessons and verified limitations.
+
 ## Inputs and evidence
 
 Requirements are supplied by the user and saved as a short local UTF-8 file. Confirm the real default branch from GitHub; `project.json` is an audited profile, not an excuse to guess a new remote. Use `git merge-base HEAD origin/main` after fetching the authorized target to freeze the comparison base. No commit/base/remote means BLOCKED: an empty repository cannot accept a first PR until its base branch exists. Never bootstrap main as an undocumented exception.
@@ -22,7 +24,11 @@ Separate one-time repository/runner capability validation from feature developme
 
 Before expensive independent review, run git diff --check, engineering/validate.py, engineering tests and tool availability checks. Settle all intended changes, snapshot and secret-screen the exact candidate, then run local checks and the two independent reviews on that frozen candidate. Reviewers receive only requirements, manifest/diff and necessary source context, never the development transcript. Consolidate all observed failures before reserving a repair batch.
 
+Bind actual preflight evidence with `python engineering/control.py bind --preflight .engineering/preflight.json`. Reserve code-review, security-review, local-checks and remote-review-request before launching each. One reservation per exact candidate, a single120-minute total deadline across candidates, and two occurrences of the same failure require a changed strategy and passing current-candidate probe. These controls supplement the persisted two-batch repair limit, not replace it. No costly phase starts merely to discover a known tool/protocol failure. Changed external adapters require a real consumer compatibility probe before review. A tool version or self-authored unit test alone is insufficient for that probe.
+
 Bind local command evidence to candidate base/digest. Reuse passing command results and reviews only for identical content and requirements after current_manifest/gate verification; a changed source candidate invalidates them. CI and one remote review request per new head run concurrently. A pending check is observation work, not a reason to repeat local reviews or rebuild. Keep compact state with ledger ID, head/digest, run ID, review state, blockers and next action. Never include personal data or credentials.
+
+Prefer official supported tooling, then validated reusable caches. A custom adapter needs a recorded necessity and real consumer/rejection test. Same-cause failures trigger diagnosis and strategy change rather than routine incremental authorization requests. Keep raw evidence locally and sanitized update excerpts at most4000 characters; do not truncate the complete review patch. Report phase counts and elapsed time; Token totals are unknown without a trusted meter. The current profile and validator are Android-specific; use the disabled migration template and verify an adapter before applying them to another project.
 
 ## Independent review
 

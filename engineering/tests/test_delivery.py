@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import delivery as d
+import control as c
 
 
 class GateTests(unittest.TestCase):
@@ -131,17 +132,35 @@ class RepositoryTests(unittest.TestCase):
             run('init', '-b', 'main'); run('config', 'user.name', 'Fixture'); run('config', 'user.email', 'fixture@example.invalid')
             (root / '.gitignore').write_text('.engineering/\n')
             (root / 'engineering').mkdir()
-            (root / 'engineering/project.json').write_text(json.dumps({'protected_branches': ['main', 'master'], 'default_branch': 'main'}))
+            config = {'protected_branches': ['main', 'master'], 'default_branch': 'main',
+                      'process_control': {'max_wall_minutes': 120, 'compatibility_paths': []}}
+            (root / 'engineering/project.json').write_text(json.dumps(config))
             (root / 'README.md').write_text('base\n'); run('add', '.'); run('commit', '-m', 'test: base')
             base = run('rev-parse', 'HEAD').decode().strip()
             run('switch', '-c', 'codex/feature')
             (root / 'feature.txt').write_text('feature\n'); run('add', '.'); run('commit', '-m', 'test: feature')
             original = d.execute
             evidence = root / '.engineering'
-            with patch.object(d, 'ROOT', root), patch.object(d, 'EVIDENCE', evidence), \
+            with patch.object(d, 'ROOT', root), patch.object(d, 'EVIDENCE', evidence), patch.object(d, 'CANDIDATE', evidence / 'candidate'), \
                  patch.object(d, 'execute', side_effect=lambda args, **kw: original(args, cwd=root, **kw)), redirect_stdout(io.StringIO()):
                 d.ledger(SimpleNamespace(command='start', base=base))
                 _branch, path = d.ledger_path(); identity = d.read(path)['id']
+                evidence.mkdir(exist_ok=True)
+                request = evidence / 'request.txt'; request.write_text('Exercise real base advancement\n')
+                def snapshot_and_preflight(target):
+                    d.snapshot(SimpleNamespace(base=target, requirements=str(request), untracked_paths=None))
+                    manifest = d.current_manifest()
+                    rows = []
+                    for name in ['baseline', 'engineering-config', 'engineering-tests', 'tools']:
+                        log = evidence / (name + '.log'); log.write_text('fixture command succeeded\n')
+                        rows.append({'name': name, 'exit_code': 0, 'evidence': str(log.relative_to(root))})
+                    report = {'status': 'PASS', 'complete': True, 'base': target, 'digest': manifest['digest'], 'checks': rows}
+                    d.save(evidence / 'preflight.json', report)
+                    return manifest, report
+                before_manifest, before_preflight = snapshot_and_preflight(base)
+                plan = c.initialize(before_manifest, d.read(path), before_preflight, config, c.time.time())
+                plan['candidates'][before_manifest['digest']] = {'preflight': before_preflight, 'phases': {'code-review': {'reserved_at': 1}}}
+                d.save(c.state_path(root, d.read(path)), plan)
                 for number in [1, 2]:
                     d.ledger(SimpleNamespace(command='fix', reason=f'fixture repair batch {number}'))
                 run('switch', 'main')
@@ -153,6 +172,16 @@ class RepositoryTests(unittest.TestCase):
                 changed = d.read(path)
                 self.assertEqual((changed['id'], changed['fix_rounds'], changed['base']), (identity, 2, target))
                 self.assertEqual(len(changed['base_changes']), 1)
+                after_manifest, _report = snapshot_and_preflight(target)
+                with patch.object(sys, 'argv', ['control.py', 'bind', '--preflight', '.engineering/preflight.json']):
+                    c.main()
+                advanced_plan = d.read(c.state_path(root, changed))
+                self.assertEqual(advanced_plan['deadline'], plan['deadline'])
+                self.assertEqual(advanced_plan['candidates'][before_manifest['digest']], plan['candidates'][before_manifest['digest']])
+                for phase in c.PHASES:
+                    c.reserve(advanced_plan, after_manifest, changed, config, phase, c.time.time())
+                d.save(c.state_path(root, changed), advanced_plan)
+                c.verify_gate(root, after_manifest, changed, config, include_remote=True)
                 with self.assertRaises(RuntimeError):
                     d.ledger(SimpleNamespace(command='fix', reason='not a fresh budget after rebasing'))
                 with self.assertRaisesRegex(RuntimeError, 'fetched default branch'):

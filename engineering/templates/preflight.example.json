@@ -1,0 +1,15 @@
+{
+  "status": "NOT_RUN",
+  "complete": false,
+  "base": null,
+  "digest": null,
+  "checks": [
+    {"name": "baseline", "exit_code": null, "evidence": null},
+    {"name": "engineering-config", "exit_code": null, "evidence": null},
+    {"name": "engineering-tests", "exit_code": null, "evidence": null},
+    {"name": "tools", "exit_code": null, "evidence": null}
+  ],
+  "consumer_compatibility": "Add a successful consumer-compatibility check with real probe evidence when an external adapter changes; otherwise record the scoped reason.",
+  "transport": "Select script or bounded connector fallback based on actual credentials and host integration.",
+  "tokens_measured": null
+}
