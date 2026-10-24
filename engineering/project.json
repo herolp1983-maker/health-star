@@ -1,0 +1,22 @@
+{
+  "project": "hero-health-android",
+  "repository": "herolp1983-maker/codex",
+  "default_branch": "main",
+  "protected_branches": ["main", "master"],
+  "jdk": "17",
+  "gradle": "8.11.1",
+  "android_sdk": "35",
+  "build_tools": "35.0.0",
+  "node": "24",
+  "local_gradle_tasks": [":app:testDebugUnitTest", ":app:lintDebug", ":app:assembleDebug"],
+  "required_jobs": ["Android Quality", "Secrets", "Static Security", "Dependencies", "Risk Detection"],
+  "max_fix_rounds": 2,
+  "ci_wait_seconds": 480,
+  "ci_poll_seconds": 30,
+  "merge_policy": "automatic-squash-exact-head",
+  "gate_mode": "agent-verified",
+  "require_enforced_branch_rules": false,
+  "high_risk_independent_security_review": true,
+  "follow_up_minutes": 30,
+  "follow_up_max_hours": 24
+}

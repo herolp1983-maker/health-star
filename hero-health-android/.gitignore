@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.gradle/
+.cache/
+.tools/
+.keys/
+local.properties
+signing.properties
+app/build/
+app/src/main/assets/www/
+build/
+*.log

@@ -1,0 +1,181 @@
+name: Engineering
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engineering-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-quality:
+    name: Android Quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, verified 2026-10-19
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: hero-health-android/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4, peeled commit
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: ''
+      - name: Install required SDK only
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Verify engineering configuration and invariants
+        run: |
+          python -m pip install PyYAML==6.0.3
+          python engineering/validate.py
+          python -m unittest discover -s engineering/tests -v
+      - name: Web domain tests and TypeScript production build
+        working-directory: hero-health-android
+        run: |
+          npm ci
+          npm test
+          npm run build:web
+      - name: Android JVM tests, lint and debug compilation
+        working-directory: hero-health-android
+        run: |
+          bash gradlew --no-daemon --console=plain :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+
+  secrets:
+    name: Secrets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install checksum-verified Gitleaks
+        run: |
+          set -euo pipefail
+          version=8.30.1
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          cd "$RUNNER_TEMP/gitleaks"
+          curl --fail --location --retry 2 -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz"
+          echo '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz' | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+      - name: Scan repository history and checked-out files
+        run: |
+          gitleaks git --redact --no-banner --exit-code 1 --log-opts='--all'
+          gitleaks dir --redact --no-banner --exit-code 1 hero-health-android
+
+  static-security:
+    name: Static Security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Install fixed Semgrep and official Java/Kotlin/TypeScript rules
+        env:
+          RULES_SHA: 17e31e11ebac99fb7dfe1cd288f7a32151b6f3f9
+        run: |
+          set -euo pipefail
+          python -m pip install semgrep==1.181.0
+          git init "$RUNNER_TEMP/semgrep-rules"
+          git -C "$RUNNER_TEMP/semgrep-rules" remote add origin https://github.com/semgrep/semgrep-rules.git
+          git -C "$RUNNER_TEMP/semgrep-rules" fetch --depth 1 origin "$RULES_SHA"
+          git -C "$RUNNER_TEMP/semgrep-rules" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/semgrep-rules" rev-parse HEAD)" = "$RULES_SHA"
+      - name: Mandatory ERROR-severity security checks
+        run: |
+          semgrep scan --strict --error --severity ERROR --metrics off --disable-version-check \
+            --config "$RUNNER_TEMP/semgrep-rules/java" \
+            --config "$RUNNER_TEMP/semgrep-rules/kotlin" \
+            --config "$RUNNER_TEMP/semgrep-rules/typescript" \
+            --config "$RUNNER_TEMP/semgrep-rules/javascript" \
+            --config engineering/semgrep.yml hero-health-android
+
+  dependencies:
+    name: Dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: hero-health-android/package-lock.json
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: ''
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Audit npm production and development dependencies
+        working-directory: hero-health-android
+        run: |
+          npm ci
+          npm audit --audit-level=high
+      - name: Restore verified NVD download cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .engineering/nvd-cache
+          key: ${{ runner.os }}-nvd-verified-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ runner.os }}-nvd-verified-v1-
+      - name: OWASP Android runtime dependency analysis
+        run: python engineering/nvd_feed.py --cache .engineering/nvd-cache --output "$RUNNER_TEMP/nvd-feeds"
+      - name: Preserve verified feeds and resumable downloads
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .engineering/nvd-cache
+          key: ${{ runner.os }}-nvd-verified-v1-${{ github.run_id }}-${{ github.run_attempt }}
+
+  risk-detection:
+    name: Risk Detection
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Mark sensitive paths in summary without posting write-privileged comments
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python engineering/ci-risk.py

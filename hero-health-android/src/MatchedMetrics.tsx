@@ -1,0 +1,10 @@
+import {useState} from 'react';
+import {useApp} from './app-context';
+import {Field} from './ui';
+import type {MatchedDraft} from './extraction-review';
+export type {MatchedDraft} from './extraction-review';
+/** Exact matches need one report-level confirmation, not per-metric selection. */
+export function MatchedMetrics({rows,edit,disabled=false}:{rows:MatchedDraft[];edit:(i:number,patch:Partial<MatchedDraft>)=>void;disabled?:boolean}){
+ const {data}=useApp(),[correcting,setCorrecting]=useState<number|null>(null);
+ return <section><h3>已明确匹配 · {rows.filter(v=>v.selected).length} 项</h3><p className="small muted">明确匹配项无需逐项选择，将随本报告结论一起确认。仅有疑点的项目需要在下方处理。</p>{rows.length>0?<details><summary>查看已匹配指标与来源（可按需修正）</summary>{rows.map((d,i)=><section className="ai-metric-review" key={i}><div className="section-title"><strong>{data.metrics.find(m=>m.id===d.metric.metricId)?.name} · {d.value}{d.metric.second!==undefined?`/${d.second}`:''} {d.metric.unit}</strong><button type="button" className="text-button" disabled={disabled} onClick={()=>setCorrecting(correcting===i?null:i)}>{correcting===i?'收起':'修正'}</button></div><p className="small muted">{d.date||'采用上方核对的报告日期'}{!d.selected?' · 已排除，本次不写入':''}<br/>输入第{d.metric.page}页{d.metric.printedPage?` · 印刷页码 ${d.metric.printedPage}`:''} · {d.metric.quote}{d.metric.matchReason?` · ${d.metric.matchReason}`:''}</p>{correcting===i&&<><Field label={d.metric.second!==undefined?'收缩压':'数值'} type="number" value={d.value} onChange={value=>edit(i,{value})} disabled={disabled}/>{d.metric.second!==undefined&&<Field label="舒张压" type="number" value={d.second} onChange={second=>edit(i,{second})} disabled={disabled}/>}<Field label="检查日期" type="date" value={d.date} onChange={date=>edit(i,{date})} disabled={disabled}/><button type="button" className="text-button" disabled={disabled} onClick={()=>edit(i,{selected:!d.selected})}>{d.selected?'此项识别有误，本次不采用':'恢复采用此项'}</button></>}</section>)}</details>:<p className="small muted">本报告未明确提取到卡片追踪指标。</p>}</section>;
+}

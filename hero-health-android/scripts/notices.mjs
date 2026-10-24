@@ -1,0 +1,5 @@
+import {readFile,writeFile,readdir,mkdir} from 'node:fs/promises';
+const manifest=JSON.parse(await readFile('package.json','utf8')),seen=new Set(),sections=[];
+async function visit(name){if(seen.has(name))return;seen.add(name);const root=`node_modules/${name}`;let pkg;try{pkg=JSON.parse(await readFile(`${root}/package.json`,'utf8'));}catch{return;}let license='';const filenames=await readdir(root);const licenseFile=filenames.find(n=>/^licen[cs]e(?:\.|$)/i.test(n));if(licenseFile)license=await readFile(`${root}/${licenseFile}`,'utf8');sections.push(`${pkg.name} ${pkg.version}\nLicense: ${pkg.license||'See package source'}\n${license.trim()}\n`);for(const dependency of Object.keys(pkg.dependencies||{}))await visit(dependency);}
+for(const name of Object.keys(manifest.dependencies))await visit(name);
+await mkdir('public',{recursive:true});await writeFile('public/THIRD_PARTY_NOTICES.txt',`Hero健康 third-party software notices\n\n${sections.sort().join('\n----------------------------------------\n\n')}`);

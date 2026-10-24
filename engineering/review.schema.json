@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "base", "digest", "complete", "reviewer", "coverage", "findings"],
+  "properties": {
+    "status": {"enum": ["PASS", "FAIL"]},
+    "base": {"type": "string"},
+    "digest": {"type": "string"},
+    "complete": {"type": "boolean"},
+    "reviewer": {"type": "string"},
+    "coverage": {"type": "array", "items": {"type": "string"}},
+    "findings": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["severity", "path", "line", "impact", "fix"],
+      "properties": {
+        "severity": {"enum": ["Critical", "High", "Medium", "Low"]},
+        "path": {"type": "string"}, "line": {"type": "integer", "minimum": 1},
+        "impact": {"type": "string"}, "fix": {"type": "string"}
+      }
+    }}
+  }
+}
