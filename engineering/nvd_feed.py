@@ -37,7 +37,8 @@ def metadata(text):
     if not (0 < size <= 2_147_483_648 and 0 < gzsize <= 536_870_912):
         raise ValueError('NVD META size outside supported bounds')
     return {'sha256': digest, 'size': size, 'gzSize': gzsize,
-            'lastModifiedDate': stamp.isoformat()}
+            # cache.properties uses Dependency-Check's single-X formatter, not ISO offsets.
+            'lastModifiedDate': stamp.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
 
 
 def remaining(deadline):

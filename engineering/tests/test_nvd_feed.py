@@ -131,6 +131,34 @@ class FeedTests(unittest.TestCase):
                 n.fetch_feed('2010', Path(folder), Path(folder), time.monotonic() - 1)
             network.assert_not_called()
 
+    def test_metadata_serializes_cache_timestamps_as_the_same_instant_in_utc(self):
+        cases = [
+            ('2026-10-23T01:00:13-04:00', '2026-10-23T05:00:13Z'),
+            ('2026-10-23T00:15:00+05:30', '2026-10-22T18:45:00Z'),
+            ('2026-10-23T23:45:00-03:30', '2026-10-24T03:15:00Z'),
+            ('2026-10-23T05:00:13.987Z', '2026-10-23T05:00:13Z'),
+            ('2026-10-23T05:00:13Z', '2026-10-23T05:00:13Z'),
+        ]
+        for source, expected in cases:
+            with self.subTest(source=source):
+                meta = self.meta.decode().replace('2026-10-21T00:00:00Z', source)
+                self.assertEqual(n.metadata(meta)['lastModifiedDate'], expected)
+        with self.assertRaisesRegex(ValueError, 'offset'):
+            n.metadata(self.meta.decode().replace('2026-10-21T00:00:00Z', '2026-10-23T05:00:13'))
+
+    def test_prepared_cache_properties_use_utc_for_every_complete_feed(self):
+        meta = self.meta.decode().replace('2026-10-21T00:00:00Z', '2026-10-23T01:00:13-04:00')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch.object(n, 'fetch_feed', side_effect=lambda kind, *args: (kind, n.metadata(meta))):
+                n.prepare(root / 'cache', root / 'out')
+            properties = dict(line.split('=', 1) for line in (root / 'out/cache.properties').read_text().splitlines())
+            year = n.datetime.now(n.timezone(n.timedelta(hours=14))).year
+            expected_keys = {'lastModifiedDate', 'lastModifiedDate.modified'} | {
+                'lastModifiedDate.' + str(y) for y in range(2002, year + 1)}
+            self.assertEqual(set(properties), expected_keys)
+            self.assertEqual(set(properties.values()), {'2026-10-23T05:00:13Z'})
+
     def test_complete_year_range_and_modified_feed_are_required_before_manifest(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder); seen = []
