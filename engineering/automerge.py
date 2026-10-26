@@ -144,9 +144,13 @@ def main():
             'Uploaded PR head tree was not verified against the reviewed local commit')
     _branch, ledger_path = d.ledger_path()
     ledger = d.read(ledger_path)
+    config = d.read(d.ROOT / 'engineering/project.json')
+    if config.get('process_control', {}).get('required') is True:
+        import control
+        control.verify_gate(d.ROOT, manifest, ledger, config, include_remote=True)
     require(ledger.get('base') == manifest['base'] and ledger.get('fix_rounds') == remote.get('fix_rounds'),
             'Remote repair count does not match the persisted delivery ledger')
-    plan = authorize(d.read(d.ROOT / 'engineering/project.json'), manifest,
+    plan = authorize(config, manifest,
                      d.read(d.CANDIDATE / 'code-review.json'), d.read(d.CANDIDATE / 'security-review.json'),
                      d.read(d.CANDIDATE / 'pre-delivery.json'), remote,
                      d.read(d.ROOT / args.rules), remote_commit, repair_limit=d.repair_limit(ledger))

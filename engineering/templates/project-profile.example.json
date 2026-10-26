@@ -1,0 +1,15 @@
+{
+  "ready": false,
+  "purpose": "Migration template only; not installed globally or automatically executable",
+  "repository": null,
+  "default_branch": "main",
+  "common_core": ["preflight", "frozen-candidate", "independent-review", "bounded-observation", "exact-head-merge"],
+  "adapters": {
+    "android-hybrid": {"reference": "engineering/project.json", "quality": ["web domain/build", "JVM", "lintDebug", "assembleDebug"]},
+    "web-node": {"example_commands": [["npm", "ci"], ["npm", "test"], ["npm", "run", "build"]], "scanners": "Choose supported lockfile/secret/static checks for the actual project"},
+    "python": {"example_commands": [["python", "-m", "pytest"]], "scanners": "Choose supported environment/lockfile/secret/static checks for the actual project"}
+  },
+  "adoption_acceptance": ["actual initialized main baseline", "review configured commands and sensitive paths", "real consumer compatibility", "five or project-approved mandatory jobs with provenance", "independent review", "one real PR and verified merge"],
+  "limits": {"repair_batches": 2, "wall_minutes": 120, "costly_phase_runs_per_candidate": 1},
+  "notes": "Current Android gates remain unchanged. Other projects require reviewed adapter implementation and onboarding; do not copy Android scanners or assume this template has validated their runtimes."
+}

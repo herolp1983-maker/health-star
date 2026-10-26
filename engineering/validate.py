@@ -37,6 +37,21 @@ def validate():
     if policy.get('policy', {}).get('allow_implicit_invocation') is not False:
         raise ValueError('Release must be explicit-only')
     config = json.loads((ROOT / 'engineering/project.json').read_text())
+    control = config.get('process_control', {})
+    if (control.get('required') is not True or control.get('max_costly_phase_runs_per_candidate') != 1
+            or type(control.get('max_wall_minutes')) is not int or not 1 <= control['max_wall_minutes'] <= 120
+            or control.get('max_log_excerpt_chars') != 4000 or config['max_fix_rounds'] != 2
+            or config['follow_up_max_hours'] * 60 > control['max_wall_minutes']
+            or not {'engineering/nvd_feed.py', 'engineering/dependency-check.init.gradle', 'engineering/watch.py'} <= set(control.get('compatibility_paths', []))):
+        raise ValueError('Delivery cost/control policy missing or relaxed')
+    for name in ['DELIVERY-CHECKLIST.md', 'RETROSPECTIVE.md', 'templates/preflight.example.json',
+                 'templates/failure-report.md', 'templates/project-profile.example.json']:
+        if not (ROOT / 'engineering' / name).is_file():
+            raise ValueError('Required closure template missing: ' + name)
+    preflight_example = json.loads((ROOT / 'engineering/templates/preflight.example.json').read_text())
+    profile_example = json.loads((ROOT / 'engineering/templates/project-profile.example.json').read_text())
+    if preflight_example['status'] != 'NOT_RUN' or preflight_example['complete'] is not False or profile_example['ready'] is not False:
+        raise ValueError('Templates must not pretend to be passing evidence or an activated adapter')
     workflow = load(ROOT / '.github/workflows/engineering.yml')
     if set(workflow['on']) != {'pull_request', 'push', 'workflow_dispatch'} or workflow['permissions'] != {'contents': 'read'}:
         raise ValueError('Unexpected CI triggers/permissions')

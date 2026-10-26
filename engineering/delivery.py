@@ -204,6 +204,11 @@ def forbidden_paths(paths):
 
 def gate(args):
     manifest = current_manifest()
+    config = read(ROOT / 'engineering/project.json')
+    if config.get('process_control', {}).get('required') is True:
+        import control
+        _branch, path = ledger_path()
+        control.verify_gate(ROOT, manifest, read(path), config)
     for kind in ['code-review', 'security-review']:
         validate_review(read(CANDIDATE / (kind + '.json')), manifest, kind)
     if forbidden_paths(manifest['changed']):
