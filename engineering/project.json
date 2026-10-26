@@ -1,6 +1,6 @@
 {
   "project": "hero-health-android",
-  "repository": "herolp1983-maker/codex",
+  "repository": "herolp1983-maker/health-star",
   "default_branch": "main",
   "protected_branches": ["main", "master"],
   "jdk": "17",
